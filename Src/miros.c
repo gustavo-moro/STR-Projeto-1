@@ -30,6 +30,7 @@
 * https://github.com/QuantumLeaps/MiROS
 ****************************************************************************/
 #include <stdint.h>
+#include <stdlib.h>
 #include "miros.h"
 #include "qassert.h"
 #include "stm32f1xx.h"
@@ -64,6 +65,26 @@ void OS_init(void *stkSto, uint32_t stkSize) {
                    stkSto, stkSize);
 }
 
+
+const uint8_t NUMBER_OF_THREADS = 3;
+OSThread* find_next_thread(){
+    OSThread *next_thread = NULL;
+    uint32_t min_period = UINT32_MAX;
+
+    for (int i = 0; i < NUMBER_OF_THREADS; i++) { // MAX_THREADS é o número total de threads
+        if (OS_readySet & (1U << i)) { // Verifica se a thread i está pronta
+            OSThread *current_thread = OS_thread[i];
+            if (current_thread->period < min_period) {
+                min_period = current_thread->period;
+                next_thread = current_thread;
+            }
+        }
+    }
+
+    return next_thread;
+
+}
+
 void OS_sched(void) {
     /* choose the next thread to execute... */
     OSThread *next;
@@ -71,7 +92,7 @@ void OS_sched(void) {
         next = OS_thread[0]; /* the idle thread */
     }
     else {
-        next = OS_thread[LOG2(OS_readySet)];
+        next = find_next_thread();
         Q_ASSERT(next != (OSThread *)0);
     }
 
@@ -103,7 +124,41 @@ void OS_run(void) {
     Q_ERROR();
 }
 
+extern uint32_t current_time = 0;
+
 void OS_tick(void) {
+    current_time++;
+
+
+
+    // Verifica as tarefas agendadas
+    for (uint8_t i = 0; i < NUMBER_OF_THREADS; i++) {
+        OSThread *task = OS_thread[i];
+
+        if(task == OS_curr){
+            task->exec_time_counter--;
+            if(task->exec_time_counter == 0){
+                uint32_t bit = (1U << (task->prio - 1U));
+                OS_readySet &= ~bit;
+                OS_delayedSet |= bit;
+            }
+        }
+
+        // Verifica se é hora de liberar a tarefa
+        if (current_time >= task->next_release) {
+            // Coloca a tarefa no conjunto de prontas
+            uint32_t bit = (1U << (task->prio - 1U));
+            OS_readySet |= bit; // Insere no conjunto de prontas
+
+            // Atualiza last_release e next_release
+            task->last_release = current_time;
+            task->next_release = task->last_release + task->period;
+
+            // Reseta o tempo utilizado para a tarefa
+            task->exec_time_counter = task->exec_time; 
+        }
+    }
+
     uint32_t workingSet = OS_delayedSet;
     while (workingSet != 0U) {
         OSThread *t = OS_thread[LOG2(workingSet)];

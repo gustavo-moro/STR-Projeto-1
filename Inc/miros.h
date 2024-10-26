@@ -37,10 +37,14 @@
 typedef struct {
     void *sp; /* stack pointer */
     uint32_t timeout; /* timeout delay down-counter */
-    uint8_t priority; /* thread priority */
+    uint8_t prio; /* thread priority */
     uint32_t exec_time;
+    uint32_t exec_time_counter;
     uint32_t period;
     uint32_t next_release;
+    uint32_t last_release;
+    uint32_t stack_thread[40];
+    uint8_t thread_id;
     /* ... other attributes associated with a thread */
 } OSThread;
 
