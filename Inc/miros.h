@@ -37,7 +37,10 @@
 typedef struct {
     void *sp; /* stack pointer */
     uint32_t timeout; /* timeout delay down-counter */
-    uint8_t prio; /* thread priority */
+    uint8_t priority; /* thread priority */
+    uint32_t exec_time;
+    uint32_t period;
+    uint32_t next_release;
     /* ... other attributes associated with a thread */
 } OSThread;
 
@@ -65,7 +68,7 @@ void OS_tick(void);
 /* callback to configure and start interrupts */
 void OS_onStartup(void);
 
-/**/
+/*Projeto 1*/
 typedef struct {
 	unsigned int cont;
 	unsigned int max_cont;
@@ -76,7 +79,11 @@ void sem_init(sem_t *sem, int init_count, int max_count);
 void sem_wait(sem_t *sem);
 
 void sem_post(sem_t *sem);
-/**/
+/*Projeto 1*/
+
+/*Projeto 2*/
+
+/*Projeto 2*/
 
 void OSThread_start(
     OSThread *me,
