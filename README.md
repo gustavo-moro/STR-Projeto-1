@@ -1,30 +1,36 @@
 Aluno: Gustavo Moro
 Matrícula: 22101929
 ---
-**Implementação dos Semáforos**
+#Projeto 2 - Tarefa periódica e Escalonador
 
-Os semáforos são utilizados para garantir que os produtores e consumidores acessem o buffer de forma sincronizada, evitando condições de corrida. No projeto, foram usados três semáforos:
+    -O algoritmo de escalonamento escolhido foi o Rate Monotonic (RM), que prioriza tarefas com menor período, permitindo que tarefas mais frequentes tenham maior prioridade de execução. Este projeto implementa esse escalonamento em um ambiente de RTOS usando o Miros.
 
-    -empty: Controla o número de espaços livres no buffer.
-    -full: Controla o número de itens disponíveis no buffer.
-    -mutex: Garante acesso exclusivo ao buffer, evitando que múltiplas threads alterem o estado ao mesmo tempo.
+##Estrutura do código
 
-**Funções de Semáforo**
+    -Funções task: No arquivo main.c, as funções task são declaradas e utilizadas pelas threads. Cada task representa uma função genérica executada pelas threads criadas na main
 
-	-sem_init: Inicializa o semáforo com um valor inicial e o valor máximo.
-    -sem_wait: Espera até que o semáforo tenha um valor positivo, indicando que a operação pode prosseguir.
-    -sem_post: Incrementa o valor do semáforo, liberando a operação para outra thread.
+    -Configuração de Tarefas no main(): As tarefas (task1, task2, task3) são configuradas com valores de exec_time (tempo de execução) e period (período)
 
-**Implementação do Produtor e Consumidor**
+    -Struct OSThread: A struct foi alterada para conter as informações necessárias para as tarefas periódicas
+        -exec_time: Tempo de execução da tarefa, que representa quanto tempo a tarefa precisa para ser concluída.
+        -exec_time_counter: Tempo de execução váriavel, que chega a 0 quando a task termina de ser executada e é setada para exec_time a cada release
+        -period: Período da tarefa, determinando a frequência com que a tarefa deve ser executada.
+        -last_release: Armazena o instante de tempo da última execução da tarefa.
+        -next_release: Armazena o instante de tempo em que a próxima execução da tarefa deve ocorrer.
+        -stack_thread: Pilha dedicada para a execução da tarefa.
 
-O sistema possui duas threads de produtores e uma thread de consumidor. Os produtores adicionam itens ao buffer, enquanto o consumidor remove itens. A sincronização é realizada através dos semáforos.
+    -Função OS_sched: atualiza OS_next com base no RM    
+    
+    -Função find_next_thread(): escolhe a próxima tarefa a ser executada com base no menor período das tarefas prontas.
 
-**Produtor**
+    -Vetor thread_states[]: armazena o estado de cada thread/task: 
+        -1 indica que a thread está pronta
+        -0 indica que a thread não está pronta
+    
+    -Variável current_time: variável atualizada a cada tick
 
-A thread do produtor insere um item no buffer, caso haja espaço disponível, e notifica o semáforo full após a inserção.
-
-**Consumidor**
-
-A thread do consumidor remove um item do buffer, caso existam itens disponíveis, e notifica o semáforo empty após a remoção.
-
-Ambas as threads usam o semáforo mutex para garantir que apenas uma thread acesse o buffer por vez.
+    -Função OS_tick: atualizações necessárias a todo tick
+        -gasta 1 tick do tempo de execução da task que está executando
+        -verifica se é hora de liberar cada tarefa
+        -caso libere tarefa, atualiza next_release, last_release e exec_time_counter
+    

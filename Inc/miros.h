@@ -44,7 +44,6 @@ typedef struct {
     uint32_t next_release;
     uint32_t last_release;
     uint32_t stack_thread[40];
-    uint8_t thread_id;
     /* ... other attributes associated with a thread */
 } OSThread;
 
