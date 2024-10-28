@@ -48,6 +48,8 @@ int thread_states[4] = {1, 1, 1, 1};
 
 #define LOG2(x) (32U - __builtin_clz(x))
 
+
+
 OSThread idleThread;
 void main_idleThread() {
     while (1) {
@@ -66,19 +68,16 @@ void OS_init(void *stkSto, uint32_t stkSize) {
                    stkSto, stkSize);
 }
 
-int aaaaa = 0;
-int bbbb = 0;
-const uint8_t NUMBER_OF_THREADS = 4;
+
+const uint8_t MAX_THREADS = 33;
 OSThread* find_next_thread(){
     OSThread *next_thread = NULL;
     uint32_t min_period = UINT32_MAX;
 
-    for (int i = 1; i < NUMBER_OF_THREADS; i++) { // MAX_THREADS é o número total de threads
+    for (int i = 1; i < MAX_THREADS; i++) { // MAX_THREADS é o número total de threads
     	if (thread_states[i] == 1) { // Verifica se a thread i está pronta
             OSThread *current_thread = OS_thread[i];
             if (current_thread->period < min_period) {
-            	//aaaaa = current_thread->prio;
-            	aaaaa++;
                 min_period = current_thread->period;
                 next_thread = current_thread;
             }
@@ -102,7 +101,6 @@ void OS_sched(void) {
 
     /* trigger PendSV, if needed */
     if (next != OS_curr) {
-    	bbbb++;
         OS_next = next;
         //*(uint32_t volatile *)0xE000ED04 = (1U << 28);
         SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
@@ -135,7 +133,7 @@ void OS_tick(void) {
     current_time++;
 
     // Verifica as tarefas agendadas
-    for (uint8_t i = 1; i < NUMBER_OF_THREADS; i++) {
+    for (uint8_t i = 1; i < MAX_THREADS; i++) {
         OSThread *task = OS_thread[i];
 
         if(task == OS_curr){

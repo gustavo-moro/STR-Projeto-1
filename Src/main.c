@@ -5,27 +5,16 @@
 
 uint32_t stack_idleThread[40];
 
-uint8_t current_task = 0;
-
-
-uint8_t abc = 0;
-
 void task1(){
-	abc = 9;
 	while(1){
-		//current_task = 1;
 	}
 }
 void task2(){
 	while(1){
-		abc = 7;
-		//current_task = 2;
 		}
 }
 void task3(){
-	abc = 2;
 	while(1){
-		//current_task = 3;
 		}
 }
 
@@ -50,7 +39,6 @@ int main() {
 	OSThread_start(&thread_task2, 2, &task2, thread_task2.stack_thread, sizeof(thread_task2.stack_thread));
 	OSThread_start(&thread_task3, 3, &task3, thread_task3.stack_thread, sizeof(thread_task3.stack_thread));
 
-	abc = 69;
     /* transfer control to the RTOS to run the threads */
     OS_run();
 
