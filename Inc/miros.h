@@ -38,8 +38,6 @@ typedef struct {
     void *sp; /* stack pointer */
     uint32_t timeout; /* timeout delay down-counter */
     uint8_t prio; /* thread priority */
-    uint32_t exec_time;
-    uint32_t exec_time_counter;
     uint32_t period;
     uint32_t next_release;
     uint32_t last_release;
@@ -70,6 +68,8 @@ void OS_tick(void);
 
 /* callback to configure and start interrupts */
 void OS_onStartup(void);
+
+void wait_next_period();
 
 /*Projeto 1*/
 typedef struct {

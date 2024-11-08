@@ -5,17 +5,30 @@
 
 uint32_t stack_idleThread[40];
 
+int a = 0;
+int b = 0;
+int c = 0;
+
 void task1(){
 	while(1){
+		a+=1;
+		for(int i = 0; i < 1000; i++){}
+		wait_next_period();
 	}
 }
 void task2(){
 	while(1){
-		}
+		b+=1;
+		for(int i = 0; i < 1000; i++){}
+		wait_next_period();
+	}
 }
 void task3(){
 	while(1){
-		}
+		c+=1;
+		for(int i = 0; i < 1000; i++){}
+		wait_next_period();
+	}
 }
 
 OSThread thread_task1;
@@ -26,13 +39,10 @@ int main() {
 
     OS_init(stack_idleThread, sizeof(stack_idleThread));
 
-	thread_task1.exec_time = 200;
 	thread_task1.period = 600;
 
-	thread_task2.exec_time = 200;
 	thread_task2.period = 800;
 
-	thread_task3.exec_time = 200;
 	thread_task3.period = 1200;
 
 	OSThread_start(&thread_task1, 1, &task1, thread_task1.stack_thread, sizeof(thread_task1.stack_thread));

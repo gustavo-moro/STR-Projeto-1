@@ -70,6 +70,7 @@ void OS_init(void *stkSto, uint32_t stkSize) {
 
 
 const uint8_t MAX_THREADS = 33;
+
 OSThread* find_next_thread(){
     OSThread *next_thread = NULL;
     uint32_t min_period = UINT32_MAX;
@@ -83,9 +84,7 @@ OSThread* find_next_thread(){
             }
         }
     }
-
     return next_thread;
-
 }
 
 void OS_sched(void) {
@@ -132,37 +131,38 @@ uint32_t current_time = 0;
 void OS_tick(void) {
     current_time++;
 
+    uint32_t workingSet = OS_delayedSet;
+    while (workingSet != 0U) {
+		OSThread *t = OS_thread[LOG2(workingSet)];
+		uint32_t bit;
+		Q_ASSERT((t != (OSThread *)0) && (t->timeout != 0U));
+
+		bit = (1U << (t->prio - 1U));
+		--t->timeout;
+		if (t->timeout == 0U) {
+			OS_readySet   |= bit;  /* insert to set */
+			OS_delayedSet &= ~bit; /* remove from set */
+			thread_states[t->prio] = 1;
+		}
+			workingSet &= ~bit; /* remove from working set */
+    }
+
     // Verifica as tarefas agendadas
     for (uint8_t i = 1; i < MAX_THREADS; i++) {
         OSThread *task = OS_thread[i];
 
-        if(task == OS_curr){
-            task->exec_time_counter--;
-            if(task->exec_time_counter == 0){
-                uint32_t bit = (1U << (task->prio - 1U));
-                OS_readySet &= ~bit;
-                OS_delayedSet |= bit;
-                thread_states[i] = 0;
-            }
-        }
-
         // Verifica se é hora de liberar a tarefa
         if (current_time >= task->next_release) {
-            // Coloca a tarefa no conjunto de prontas
-            uint32_t bit = (1U << (task->prio - 1U));
-            OS_delayedSet &= ~bit;
-            OS_readySet |= bit; // Insere no conjunto de prontas
-            thread_states[i] = 1;
-
             // Atualiza last_release e next_release
             task->last_release = current_time;
             task->next_release = task->last_release + task->period;
-
-            // Reseta o tempo utilizado para a tarefa
-            task->exec_time_counter = task->exec_time;
         }
     }
 
+}
+
+void wait_next_period(){
+    OS_delay(OS_curr->period);
 }
 
 void OS_delay(uint32_t ticks) {
@@ -176,6 +176,7 @@ void OS_delay(uint32_t ticks) {
     bit = (1U << (OS_curr->prio - 1U));
     OS_readySet &= ~bit;
     OS_delayedSet |= bit;
+    thread_states[OS_curr->prio] = 0;
     OS_sched();
     __asm volatile ("cpsie i");
 }
