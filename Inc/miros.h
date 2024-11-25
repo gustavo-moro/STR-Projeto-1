@@ -37,7 +37,7 @@
 typedef struct {
     void *sp; /* stack pointer */
     uint32_t timeout; /* timeout delay down-counter */
-    uint8_t prio; /* thread priority */
+    uint8_t id; /* thread priority */
     uint32_t period;
     uint32_t next_release;
     uint32_t last_release;
@@ -71,6 +71,8 @@ void OS_onStartup(void);
 
 void wait_next_period();
 
+void finish_aperiodic_task();
+
 /*Projeto 1*/
 typedef struct {
 	unsigned int cont;
@@ -92,6 +94,6 @@ void OSThread_start(
     OSThread *me,
     uint8_t prio, /* thread priority */
     OSThreadHandler threadHandler,
-    void *stkSto, uint32_t stkSize);
+    void *stkSto, uint32_t stkSize, uint8_t tipo);
 
 #endif /* MIROS_H */

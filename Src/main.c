@@ -8,25 +8,33 @@ uint32_t stack_idleThread[40];
 int a = 0;
 int b = 0;
 int c = 0;
+int d = 0;
 
 void task1(){
 	while(1){
 		a+=1;
-		for(int i = 0; i < 1000; i++){}
+		//for(int i = 0; i < 1000; i++){}
 		wait_next_period();
 	}
 }
 void task2(){
 	while(1){
 		b+=1;
-		for(int i = 0; i < 1000; i++){}
+		//for(int i = 0; i < 1000; i++){}
 		wait_next_period();
 	}
 }
 void task3(){
 	while(1){
 		c+=1;
-		for(int i = 0; i < 1000; i++){}
+		//for(int i = 0; i < 1000; i++){}
+		wait_next_period();
+	}
+}
+void aperiodic_task(){
+	while(1){
+		d+=1;
+		//for(int i = 0; i < 1000; i++){}
 		wait_next_period();
 	}
 }
@@ -35,19 +43,25 @@ OSThread thread_task1;
 OSThread thread_task2;
 OSThread thread_task3;
 
+
+OSThread thread_aperiodic_task;
+
 int main() {
 
     OS_init(stack_idleThread, sizeof(stack_idleThread));
 
 	thread_task1.period = 600;
-
 	thread_task2.period = 800;
-
 	thread_task3.period = 1200;
 
-	OSThread_start(&thread_task1, 1, &task1, thread_task1.stack_thread, sizeof(thread_task1.stack_thread));
-	OSThread_start(&thread_task2, 2, &task2, thread_task2.stack_thread, sizeof(thread_task2.stack_thread));
-	OSThread_start(&thread_task3, 3, &task3, thread_task3.stack_thread, sizeof(thread_task3.stack_thread));
+	thread_aperiodic_task.period = 0;
+
+	OSThread_start(&thread_task1, 1, &task1, thread_task1.stack_thread, sizeof(thread_task1.stack_thread), 1);
+	OSThread_start(&thread_task2, 2, &task2, thread_task2.stack_thread, sizeof(thread_task2.stack_thread), 1);
+	OSThread_start(&thread_task3, 3, &task3, thread_task3.stack_thread, sizeof(thread_task3.stack_thread), 1);
+	//OSThread_start(&thread_task4, 4, &task4, thread_task4.stack_thread, sizeof(thread_task4.stack_thread));
+
+	OSThread_start(&thread_aperiodic_task, 4, &aperiodic_task, thread_aperiodic_task.stack_thread, sizeof(thread_aperiodic_task.stack_thread), 2);
 
     /* transfer control to the RTOS to run the threads */
     OS_run();
