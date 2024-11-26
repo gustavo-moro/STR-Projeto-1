@@ -46,7 +46,6 @@ OSThread *OS_thread[7]; /* array of threads started so far */
 
 uint32_t OS_readySet = 0; /* bitmask of threads that are ready to run */
 uint32_t OS_delayedSet = 0; /* bitmask of threads that are delayed */
-uint32_t OS_aperiodicSet = 0;
 
 int priorities[7];
 

@@ -39,8 +39,6 @@ typedef struct {
     uint32_t timeout; /* timeout delay down-counter */
     uint8_t id; /* thread priority */
     uint32_t period;
-    uint32_t next_release;
-    uint32_t last_release;
     uint32_t stack_thread[40];
     uint8_t tipo;
     /* ... other attributes associated with a thread */
