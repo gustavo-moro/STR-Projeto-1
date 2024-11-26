@@ -35,6 +35,7 @@
 #include "qassert.h"
 #include "stm32f1xx.h"
 #include <assert.h>
+#include <time.h>
 
 Q_DEFINE_THIS_FILE
 
@@ -47,8 +48,7 @@ uint32_t OS_readySet = 0; /* bitmask of threads that are ready to run */
 uint32_t OS_delayedSet = 0; /* bitmask of threads that are delayed */
 uint32_t OS_aperiodicSet = 0;
 
-//int thread_states[11];
-int priorities[6] = {33, 0, 0, 0, 0, 0};
+int priorities[7];
 
 #define LOG2(x) (32U - __builtin_clz(x))
 
@@ -70,26 +70,36 @@ void OS_init(void *stkSto, uint32_t stkSize) {
                    stkSto, stkSize, 1);
 }
 
-
+void fix_priorities(){
+	priorities[0] = 33;
+	for(int i = 1; i < MAX_THREADS; i++){
+		OSThread *current_thread = OS_thread[i];
+		if(current_thread->tipo == 1){
+			uint32_t prio = 1;
+			for(int j = 1; j < MAX_THREADS; j++){
+				OSThread *other_thread = OS_thread[j];
+				if(other_thread->tipo == 1 && current_thread->period > other_thread->period){
+					prio++;
+				}
+			}
+			priorities[i] = prio;
+		} else{
+			priorities[i] = 33;
+		}
+	}
+}
 
 OSThread* find_next_thread(){
     OSThread *next_thread = NULL;
-    uint32_t min_period = UINT32_MAX;
-    uint32_t aux = 0;
+    uint32_t highest_priority = UINT32_MAX;
     uint32_t bit;
     for (int i = 1; i <= MAX_THREADS/2; i++) { // MAX_THREADS é o número total de threads
         bit = (1U << (i - 1U));
     	if (OS_readySet & bit) { // Verifica se a thread i está pronta
             OSThread *current_thread = OS_thread[i];
-            if (current_thread->period < min_period) {
-                min_period = current_thread->period;
+            if (priorities[i] < highest_priority) {
+                highest_priority = priorities[i];
                 next_thread = current_thread;
-                if(aux == 0){
-                	priorities[i] = i;
-                }
-                if(i == 4){
-                	aux = 1;
-                }
             }
         }
     }
@@ -152,7 +162,7 @@ void OS_sched(void) {
 void OS_run(void) {
     /* callback to configure and start interrupts */
     OS_onStartup();
-
+    fix_priorities();
     __disable_irq();
     OS_sched();
     __enable_irq();
@@ -227,12 +237,15 @@ void sem_wait(sem_t *sem){
 			__disable_irq();
 		}
 		sem->cont--;
+		sem->prior = priorities[OS_curr->id];
+		priorities[OS_curr->id] = 1; //NPP diz que a task que pegar o recurso não deve ser preemptada, ou seja, recebe prioridade máxima
 }
 
 void sem_post(sem_t *sem){
 	__disable_irq();
 	if(sem->cont < sem->max_cont){
 		sem->cont++;
+		priorities[OS_curr->id] = sem->prior;
 	}
 	__enable_irq();
 }
@@ -288,6 +301,7 @@ void OSThread_start(
     if(tipo == 1){
         OS_thread[id] = me;
         me->id = id;
+        me->tipo = tipo;
         /* make the thread ready to run */
         if (id > 0U) {
             uint8_t bit = (1U << (id - 1U));
@@ -298,6 +312,7 @@ void OSThread_start(
     if(tipo == 2){
         OS_thread[id] = me;
         me->id = id;
+        me->tipo = tipo;
         if (id > 0U) {
             uint8_t bit = (1U << (id - 1U));
             OS_readySet   |= bit;

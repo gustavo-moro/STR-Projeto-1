@@ -10,31 +10,49 @@ int b = 0;
 int c = 0;
 int d = 0;
 
+sem_t Crit_Reg_A;
+sem_t Crit_Reg_B;
+
+int passar_tempo = 0;
+
 void task1(){
 	while(1){
 		a+=1;
-		//for(int i = 0; i < 1000; i++){}
+		sem_wait(&Crit_Reg_A);
+		for(int i = 0; i < 100; i++){
+			passar_tempo++;
+		}
+		sem_post(&Crit_Reg_A);
 		wait_next_period();
 	}
 }
 void task2(){
 	while(1){
 		b+=1;
-		//for(int i = 0; i < 1000; i++){}
+		sem_wait(&Crit_Reg_B);
+		for(int i = 0; i < 100; i++){
+			passar_tempo++;
+		}
+		sem_post(&Crit_Reg_B);
 		wait_next_period();
 	}
 }
 void task3(){
 	while(1){
 		c+=1;
-		//for(int i = 0; i < 1000; i++){}
+		sem_wait(&Crit_Reg_A);
+		sem_wait(&Crit_Reg_B);
+		for(int i = 0; i < 100; i++){
+			passar_tempo++;
+		}
+		sem_post(&Crit_Reg_B);
+		sem_post(&Crit_Reg_A);
 		wait_next_period();
 	}
 }
 void aperiodic_task(){
 	while(1){
 		d+=1;
-		//for(int i = 0; i < 1000; i++){}
 		wait_next_period();
 	}
 }
@@ -49,6 +67,9 @@ OSThread thread_aperiodic_task;
 int main() {
 
     OS_init(stack_idleThread, sizeof(stack_idleThread));
+
+	sem_init(&Crit_Reg_A, 1, 1);
+	sem_init(&Crit_Reg_B, 1, 1);
 
 	thread_task1.period = 600;
 	thread_task2.period = 800;

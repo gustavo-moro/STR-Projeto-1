@@ -42,6 +42,7 @@ typedef struct {
     uint32_t next_release;
     uint32_t last_release;
     uint32_t stack_thread[40];
+    uint8_t tipo;
     /* ... other attributes associated with a thread */
 } OSThread;
 
@@ -77,6 +78,7 @@ OSThread* sched_aperiodic();
 typedef struct {
 	unsigned int cont;
 	unsigned int max_cont;
+	unsigned int prior;
 } sem_t;
 
 void sem_init(sem_t *sem, int init_count, int max_count);
@@ -92,7 +94,7 @@ void sem_post(sem_t *sem);
 
 void OSThread_start(
     OSThread *me,
-    uint8_t prio, /* thread priority */
+    uint8_t id, /* thread priority */
     OSThreadHandler threadHandler,
     void *stkSto, uint32_t stkSize, uint8_t tipo);
 
