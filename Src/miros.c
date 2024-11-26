@@ -40,17 +40,17 @@ Q_DEFINE_THIS_FILE
 
 OSThread * volatile OS_curr; /* pointer to the current thread */
 OSThread * volatile OS_next; /* pointer to the next thread to run */
+uint8_t MAX_THREADS = 7;
+OSThread *OS_thread[7]; /* array of threads started so far */
 
-OSThread *OS_thread[4 + 1]; /* array of threads started so far */
-uint32_t OS_readySet; /* bitmask of threads that are ready to run */
-uint32_t OS_delayedSet; /* bitmask of threads that are delayed */
-int thread_states[5] = {1, 1, 1, 1, 1};
-int priorities[5] = {33, 0, 0, 0, 0,};
-int aperiodic = 0;
+uint32_t OS_readySet = 0; /* bitmask of threads that are ready to run */
+uint32_t OS_delayedSet = 0; /* bitmask of threads that are delayed */
+uint32_t OS_aperiodicSet = 0;
+
+//int thread_states[11];
+int priorities[6] = {33, 0, 0, 0, 0, 0};
 
 #define LOG2(x) (32U - __builtin_clz(x))
-
-
 
 OSThread idleThread;
 void main_idleThread() {
@@ -71,14 +71,15 @@ void OS_init(void *stkSto, uint32_t stkSize) {
 }
 
 
-const uint8_t MAX_THREADS = 5;
 
 OSThread* find_next_thread(){
     OSThread *next_thread = NULL;
     uint32_t min_period = UINT32_MAX;
     uint32_t aux = 0;
-    for (int i = 1; i < 5; i++) { // MAX_THREADS é o número total de threads
-    	if (thread_states[i] == 1) { // Verifica se a thread i está pronta
+    uint32_t bit;
+    for (int i = 1; i <= MAX_THREADS/2; i++) { // MAX_THREADS é o número total de threads
+        bit = (1U << (i - 1U));
+    	if (OS_readySet & bit) { // Verifica se a thread i está pronta
             OSThread *current_thread = OS_thread[i];
             if (current_thread->period < min_period) {
                 min_period = current_thread->period;
@@ -95,20 +96,41 @@ OSThread* find_next_thread(){
     return next_thread;
 }
 
+OSThread* sched_aperiodic(){
+    OSThread *next_thread = NULL;
+    uint32_t bit;
+    for (int i = 4; i < MAX_THREADS; i++) { // MAX_THREADS é o número total de threads
+        bit = (1U << (i - 1U));
+        if(bit & OS_readySet){
+            OSThread *current_thread = OS_thread[i];
+            next_thread = current_thread;
+        }
+    }
+    return next_thread;
+}
+
 void OS_sched(void) {
     /* choose the next thread to execute... */
+	int periodics = 0;
+	uint32_t bit;
+	for(int i = 1; i <= MAX_THREADS/2; i++){
+		bit = (1U << (i - 1U));
+		if(bit & OS_readySet){
+			periodics++;
+		}
+	}
     OSThread *next;
-    if (OS_readySet == 0U) { /* Background Scheduling*/
-    	/*if(aperiodic == 1){
-    		next = OS_thread[4];
-    		//next = sched_aperiodic();
-    	}*/
-    	next = OS_thread[0]; /* the idle thread */
-    }
-    else {
+     /* Background Scheduling*/
+    if(periodics == 0){
+    	next = sched_aperiodic();
+    	if(next == NULL) {
+    		next = OS_thread[0];
+    	}
+    } else{
         next = find_next_thread();
         Q_ASSERT(next != (OSThread *)0);
     }
+
 
     /* trigger PendSV, if needed */
     if (next != OS_curr) {
@@ -140,10 +162,8 @@ void OS_run(void) {
 }
 
 uint32_t current_time = 0;
-
 void OS_tick(void) {
-    current_time++;
-
+	current_time++;
     uint32_t workingSet = OS_delayedSet;
     while (workingSet != 0U) {
 		OSThread *t = OS_thread[LOG2(workingSet)];
@@ -155,23 +175,9 @@ void OS_tick(void) {
 		if (t->timeout == 0U) {
 			OS_readySet   |= bit;  /* insert to set */
 			OS_delayedSet &= ~bit; /* remove from set */
-			thread_states[t->id] = 1;
 		}
 			workingSet &= ~bit; /* remove from working set */
     }
-
-    // Verifica as tarefas agendadas
-    for (uint8_t i = 1; i < MAX_THREADS; i++) {
-        OSThread *task = OS_thread[i];
-
-        // Verifica se é hora de liberar a tarefa
-        if (current_time >= task->next_release) {
-            // Atualiza last_release e next_release
-            task->last_release = current_time;
-            task->next_release = task->last_release + task->period;
-        }
-    }
-
 }
 
 void wait_next_period(){
@@ -183,7 +189,6 @@ void wait_next_period(){
 	if(OS_curr->period == 0){
         uint32_t random_delay = 100 + rand() % 1000;
         OS_delay(random_delay);
-        aperiodic = 0;
 	}else{
 		OS_delay(OS_curr->period);
 	}
@@ -192,16 +197,17 @@ void wait_next_period(){
 
 void OS_delay(uint32_t ticks) {
     uint32_t bit;
+
     __asm volatile ("cpsid i");
 
     /* never call OS_delay from the idleThread */
     Q_REQUIRE(OS_curr != OS_thread[0]);
 
     OS_curr->timeout = ticks;
+
     bit = (1U << (OS_curr->id - 1U));
-    OS_readySet &= ~bit;
+    OS_readySet   &= ~bit;
     OS_delayedSet |= bit;
-    thread_states[OS_curr->id] = 0;
     OS_sched();
     __asm volatile ("cpsie i");
 }
@@ -238,11 +244,6 @@ void OSThread_start(
     OSThreadHandler threadHandler,
     void *stkSto, uint32_t stkSize, uint8_t tipo)
 {
-
-	if(tipo == 2){
-		aperiodic ++;
-	}
-
     /* round down the stack top to the 8-byte boundary
     * NOTE: ARM Cortex-M stack grows down from hi -> low memory
     */
@@ -284,13 +285,24 @@ void OSThread_start(
         *sp = 0xDEADBEEFU;
     }
 
-    /* register the thread with the OS */
-    OS_thread[id] = me;
-    me->id = id;
-    /* make the thread ready to run */
-    if (id > 0U) {
-        OS_readySet |= (1U << (id - 1U));
-    }
+    if(tipo == 1){
+        OS_thread[id] = me;
+        me->id = id;
+        /* make the thread ready to run */
+        if (id > 0U) {
+            uint8_t bit = (1U << (id - 1U));
+            OS_readySet   |= bit;  /* insert to set */
+        }
+	}
+
+    if(tipo == 2){
+        OS_thread[id] = me;
+        me->id = id;
+        if (id > 0U) {
+            uint8_t bit = (1U << (id - 1U));
+            OS_readySet   |= bit;
+        }
+	}
 }
 
 __attribute__ ((naked, optimize("-fno-stack-protector")))

@@ -71,7 +71,7 @@ void OS_onStartup(void);
 
 void wait_next_period();
 
-void finish_aperiodic_task();
+OSThread* sched_aperiodic();
 
 /*Projeto 1*/
 typedef struct {

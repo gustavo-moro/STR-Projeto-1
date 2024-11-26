@@ -54,12 +54,11 @@ int main() {
 	thread_task2.period = 800;
 	thread_task3.period = 1200;
 
-	thread_aperiodic_task.period = 0;
+	thread_aperiodic_task.period = 0; // tarefa aperiódica não tem período
 
 	OSThread_start(&thread_task1, 1, &task1, thread_task1.stack_thread, sizeof(thread_task1.stack_thread), 1);
 	OSThread_start(&thread_task2, 2, &task2, thread_task2.stack_thread, sizeof(thread_task2.stack_thread), 1);
 	OSThread_start(&thread_task3, 3, &task3, thread_task3.stack_thread, sizeof(thread_task3.stack_thread), 1);
-	//OSThread_start(&thread_task4, 4, &task4, thread_task4.stack_thread, sizeof(thread_task4.stack_thread));
 
 	OSThread_start(&thread_aperiodic_task, 4, &aperiodic_task, thread_aperiodic_task.stack_thread, sizeof(thread_aperiodic_task.stack_thread), 2);
 
